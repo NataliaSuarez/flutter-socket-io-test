@@ -1,57 +1,32 @@
 import 'package:flutter/material.dart';
 import 'package:socket_io_client/socket_io_client.dart' as IO;
 import 'package:wstest/chat_room_args.dart';
+import 'package:wstest/chat_socket.dart';
 import 'package:wstest/stream_socket.dart';
 
 class RoomsPage extends StatefulWidget {
   const RoomsPage({
     super.key,
   });
-
   @override
   State<RoomsPage> createState() => _RoomsPageState();
 }
 
 class _RoomsPageState extends State<RoomsPage> {
-  final TextEditingController _controller = TextEditingController();
-  IO.Socket? socket;
+  final IO.Socket socket = ChatSocket().socket!;
   @override
   void initState() {
-    connectAndListen();
+    joinRooms();
     super.initState();
   }
-  //
 
   StreamSocket streamSocket = StreamSocket();
-  void connectAndListen() {
-    socket = IO.io('http://192.168.1.37:81', <String, dynamic>{
-      'autoConnect': false,
-      'transports': ['websocket'],
+  void joinRooms() {
+    socket.on('new_room', (room) {
+      debugPrint('en el event new_room');
+      streamSocket.addToList(room);
     });
-    if (socket != null) {
-      // handle connect
-      socket!.connect();
-      socket!.onConnect((_) {
-        debugPrint('Connection established');
-      });
-      socket!.onConnectError((err) {
-        debugPrint('onConnectError');
-        debugPrint(err.toString());
-      });
-      // handle error
-      socket!.onError((err) {
-        debugPrint('onError');
-        debugPrint(err.toString());
-      });
-      // events
-      socket!.on('new_room', (room) {
-        debugPrint('en el event new_room');
-        streamSocket.addToList(room);
-      });
-      socket!.emit('event_rooms');
-      // dispose
-      socket!.onDisconnect((_) => debugPrint('Connection Disconnection'));
-    }
+    socket.emit('event_rooms');
   }
 
   @override
@@ -103,10 +78,5 @@ class _RoomsPageState extends State<RoomsPage> {
         ),
       ),
     );
-  }
-
-  @override
-  void dispose() {
-    super.dispose();
   }
 }

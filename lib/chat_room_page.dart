@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:socket_io_client/socket_io_client.dart' as IO;
 import 'package:wstest/chat_room_args.dart';
+import 'package:wstest/chat_socket.dart';
 import 'package:wstest/stream_socket.dart';
 
 class ChatRoomPage extends StatefulWidget {
@@ -15,44 +16,20 @@ class ChatRoomPage extends StatefulWidget {
 
 class _ChatRoomPageState extends State<ChatRoomPage> {
   final TextEditingController _controller = TextEditingController();
-  IO.Socket? socket;
+  final IO.Socket socket = ChatSocket().socket!;
   @override
   void initState() {
-    connectAndListen();
+    joinChat();
     super.initState();
   }
   //
 
   StreamSocket streamSocket = StreamSocket();
-  void connectAndListen() {
-    socket = IO.io('http://192.168.1.37:81', <String, dynamic>{
-      'autoConnect': false,
-      'transports': ['websocket'],
+  void joinChat() {
+    socket.on('new_message', (data) {
+      debugPrint('en el event new_message');
+      streamSocket.addToList('${data["message"]} - ${data["sender"]}');
     });
-    if (socket != null) {
-      // handle connect
-      socket!.connect();
-      socket!.onConnect((_) {
-        debugPrint('Connection established');
-      });
-      socket!.onConnectError((err) {
-        debugPrint('onConnectError');
-        debugPrint(err.toString());
-      });
-      // handle error
-      socket!.onError((err) {
-        debugPrint('onError');
-        debugPrint(err.toString());
-      });
-      // events
-      socket!.on('new_message', (data) {
-        debugPrint('en el event new_message');
-        streamSocket.addToList('${data["message"]} - ${data["sender"]}');
-      });
-      // socket!.emit('event_join', 'test');
-      // dispose
-      socket!.onDisconnect((_) => debugPrint('Connection Disconnection'));
-    }
   }
 
   @override
@@ -60,7 +37,7 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
     final args =
         ModalRoute.of(context)!.settings.arguments as ChatRoomPageArguments;
     List<String> items = [];
-    socket!.emit('event_join', args.room);
+    socket.emit('event_join', args.room);
     return Scaffold(
       appBar: AppBar(
         title: Text('${args.title} - ${args.room}'),
@@ -106,7 +83,7 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
                 ),
                 IconButton(
                     onPressed: () {
-                      socket!.emit('event_message',
+                      socket.emit('event_message',
                           {"room": args.room, "message": _controller.text});
                       _controller.clear();
                     },
@@ -120,10 +97,5 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
         ),
       ),
     );
-  }
-
-  @override
-  void dispose() {
-    super.dispose();
   }
 }
